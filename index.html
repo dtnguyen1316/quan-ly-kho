@@ -616,32 +616,38 @@
     </div>
 
     <!-- FIREBASE CLOUD DATABASE SCRIPT -->
+   <!-- FIREBASE CLOUD DATABASE SCRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
-        // Firebase Config Setup (Tự động thích ứng hoặc sử dụng mặc định)
+        // Cấu hình Firebase của bạn
+        const firebaseConfig = {
+            apiKey: "AIzaSyDjLnQJbIirCITzy41pHm1Tpes92EbJDQ0",
+            authDomain: "quan-ly-kho-1.firebaseapp.com",
+            projectId: "quan-ly-kho-1",
+            storageBucket: "quan-ly-kho-1.firebasestorage.app",
+            messagingSenderId: "85959675750",
+            appId: "1:85959675750:web:1bfead753099bf076e02a7",
+            measurementId: "G-T970N0DFLE"
+        };
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'kho-hang-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                // Nhập thông tin cấu hình Firebase của bạn ở đây nếu triển khai riêng
-                apiKey: "DEMO_KEY",
-                authDomain: "demo.firebaseapp.com",
-                projectId: "demo-app",
-                storageBucket: "demo.appspot.com",
-                messagingSenderId: "123456789",
-                appId: "1:123456789:web:demo"
-            };
 
-        let app, db, auth;
+        let app, db, auth, analytics;
         let currentUser = null;
 
         try {
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
+            try {
+                analytics = getAnalytics(app);
+            } catch (e) {
+                console.warn("Analytics không khả dụng trên môi trường này", e);
+            }
             
             // Xử lý Đăng nhập Đám mây
             const initAuth = async () => {
@@ -667,7 +673,7 @@
                 }
             });
         } catch (e) {
-            console.log("Sử dụng LocalStorage mặc định");
+            console.log("Sử dụng LocalStorage mặc định do lỗi khởi tạo Firebase", e);
         }
 
         // Lắng nghe biến đổi dữ liệu vĩnh viễn trên Cloud
@@ -682,7 +688,6 @@
                 if (docSnap.exists()) {
                     window.products = docSnap.data().list || [];
                 } else {
-                    // Lưu ban đầu nếu chưa có trên Đám mây
                     saveDataToCloud();
                 }
                 window.updateDashboard();
@@ -701,11 +706,9 @@
 
         // Hàm Lưu Đám Mây Toàn Cục
         window.saveDataToCloud = async function() {
-            // Lưu LocalStorage dự phòng
             localStorage.setItem('app_products', JSON.stringify(window.products));
             localStorage.setItem('app_history', JSON.stringify(window.historyData));
 
-            // Nếu đã kết nối Firebase Cloud
             if (currentUser && db) {
                 try {
                     const productsDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'productsData', 'main');
