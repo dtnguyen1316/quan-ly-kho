@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
     <title>Hệ Thống Quản Lý Bán Hàng & Kho Hàng</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,20 +22,53 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ===== GIAO DIỆN DÙNG CHUNG ĐIỆN THOẠI / MÁY TÍNH ===== */
+        html { -webkit-text-size-adjust: 100%; }
+        body { height: 100vh; -webkit-tap-highlight-color: transparent; }
+        @supports (height: 100dvh) { body { height: 100dvh; } }
+        button, select, input, label { touch-action: manipulation; }
+        #main-scroll { scroll-padding-bottom: 6rem; }
+        main > section { max-width: 1600px; margin-left: auto; margin-right: auto; }
+        #bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+        #mobile-cart-bar { bottom: calc(68px + env(safe-area-inset-bottom)); }
+        @media (min-width: 768px) { #mobile-cart-bar { bottom: 16px; } }
+        #pagination-controls, #dash-cat-pagination-controls, #inv-pagination-controls { flex-wrap: wrap; justify-content: center; row-gap: .25rem; }
+
+        @media (max-width: 767px) {
+            input, select, textarea { font-size: 16px !important; }
+            table:not(.rt) th, table:not(.rt) td { padding-left: .5rem !important; padding-right: .5rem !important; }
+            #tab-products .flex-wrap > button { flex: 1 1 auto; justify-content: center; }
+
+            table.rt, table.rt tbody, table.rt tr { display: block; width: 100%; }
+            table.rt thead { display: none; }
+            table.rt tr { position: relative; padding: .5rem 1rem; border-bottom: 1px solid #e2e8f0; }
+            table.rt td { display: block; position: relative; padding: .25rem 0 .25rem 42% !important; text-align: right !important; min-height: 1.6rem; word-break: break-word; }
+            table.rt td::before { content: attr(data-label); position: absolute; left: 0; top: .35rem; width: 38%; text-align: left; font-size: 10.5px; font-weight: 600; text-transform: uppercase; color: #64748b; line-height: 1.3; }
+            table.rt td[data-label=""] { position: absolute; top: .6rem; right: .9rem; width: auto; padding: 0 !important; min-height: 0; }
+            table.rt td[data-label=""]::before, table.rt td[colspan]::before { display: none; }
+            table.rt td[colspan] { padding-left: 0 !important; text-align: center !important; }
+            table.rt td button { padding: .5rem .9rem !important; }
+        }
         @media print {
+            #bottom-nav, #mobile-cart-bar, #sidebar, #sidebar-backdrop, header { display: none !important; }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 flex h-screen overflow-hidden">
+<body class="bg-slate-100 text-slate-800 flex overflow-hidden">
+
+    <!-- LỚP PHỦ KHI MỞ MENU (điện thoại) -->
+    <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-slate-900/50 z-40 md:hidden" onclick="closeSidebar()"></div>
 
     <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-64 bg-slate-900 text-white flex flex-col justify-between hidden md:flex shrink-0 z-40">
+    <aside id="sidebar" class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 z-50 fixed inset-y-0 left-0 -translate-x-full transition-transform duration-200 md:static md:translate-x-0 overflow-y-auto">
         <div>
-            <div class="h-16 flex items-center px-6 bg-slate-950 font-bold text-xl text-blue-400 gap-3 border-b border-slate-800">
+            <div class="h-16 flex items-center px-5 md:px-6 bg-slate-950 font-bold text-lg md:text-xl whitespace-nowrap text-blue-400 gap-3 border-b border-slate-800 shrink-0">
                 <i class="fa-solid fa-boxes-stacked text-2xl"></i>
                 <span>KHO & BÁN HÀNG</span>
+                <button type="button" onclick="closeSidebar()" aria-label="Đóng menu" class="md:hidden ml-auto w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <nav class="mt-6 px-4 space-y-1">
                 <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all bg-blue-600 text-white">
@@ -68,26 +102,26 @@
             </nav>
         </div>
         <div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-between">
-            <span>Phiên bản v3.0</span>
+            <span>Phiên bản v3.1</span>
             <span class="flex items-center gap-1.5"><span id="cloud-status-text" class="text-[10px]">Đang kết nối...</span><span id="cloud-status-dot" class="inline-block w-2 h-2 rounded-full bg-amber-500" title="Đang kết nối..."></span></span>
         </div>
     </aside>
 
     <!-- MAIN CONTENT AREA -->
     <div class="flex-1 flex flex-col h-full overflow-hidden">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-            <div class="flex items-center gap-4">
-                <button id="mobile-menu-btn" class="md:hidden text-slate-600 hover:text-slate-900 focus:outline-none">
+        <header class="h-14 md:h-16 bg-white border-b border-slate-200 flex items-center justify-between px-3 md:px-6 shrink-0 gap-2">
+            <div class="flex items-center gap-2 md:gap-4 min-w-0">
+                <button id="mobile-menu-btn" aria-label="Mở menu" class="md:hidden w-10 h-10 -ml-1 flex items-center justify-center text-slate-600 hover:text-slate-900 focus:outline-none">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
-                <h1 id="page-title" class="text-xl font-bold text-slate-800">Tổng quan</h1>
+                <h1 id="page-title" class="text-base md:text-xl font-bold text-slate-800 truncate">Tổng quan</h1>
             </div>
-            <div class="flex items-center gap-4">
-                <button onclick="switchTab('export')" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm transition-all">
+            <div class="flex items-center gap-2 md:gap-4 shrink-0">
+                <button onclick="switchTab('export')" aria-label="Tạo đơn mới" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm transition-all">
                     <i class="fa-solid fa-plus"></i>
                     <span class="hidden sm:inline">Tạo Đơn Mới</span>
                 </button>
-                <div class="h-8 w-px bg-slate-200"></div>
+                <div class="hidden sm:block h-8 w-px bg-slate-200"></div>
                 <div class="flex items-center gap-3">
                     <img src="https://placehold.co/100x100/3b82f6/ffffff?text=NV" class="w-9 h-9 rounded-full border border-slate-200" alt="Avatar">
                     <div class="hidden sm:block">
@@ -98,16 +132,15 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50">
+        <main id="main-scroll" class="flex-1 overflow-y-auto p-3 md:p-6 pb-24 lg:pb-6 bg-slate-50">
 
             <!-- TAB 1: DASHBOARD -->
             <section id="tab-dashboard" class="tab-content space-y-6">
                 <!-- 1. 4 THẺ THỐNG KÊ KINH DOANH TỔNG QUAN -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <div class="col-span-2 lg:col-span-1 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                         <div class="flex items-center justify-between">
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng Doanh Thu</p>
-                            <!-- MẶC ĐỊNH LỌC THEO HÔM NAY -->
                             <select id="revenue-card-filter" onchange="updateDashboard()" class="bg-slate-50 border border-slate-200 text-[11px] rounded px-2 py-1 font-medium text-slate-700 outline-none">
                                 <option value="today" selected>Hôm nay</option>
                                 <option value="week">Tuần này</option>
@@ -130,7 +163,7 @@
                             <h3 id="dash-total-products" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
                             <p class="text-xs text-slate-500 mt-2">Loại mặt hàng</p>
                         </div>
-                        <div class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 text-xl"><i class="fa-solid fa-boxes-packing"></i></div>
+                        <div class="w-12 h-12 bg-blue-50 rounded-lg hidden sm:flex items-center justify-center text-blue-600 text-xl"><i class="fa-solid fa-boxes-packing"></i></div>
                     </div>
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                         <div>
@@ -138,21 +171,20 @@
                             <h3 id="dash-low-stock" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
                             <p class="text-xs text-rose-500 mt-2 font-medium">Tồn kho dưới ngưỡng</p>
                         </div>
-                        <div class="w-12 h-12 bg-rose-50 rounded-lg flex items-center justify-center text-rose-600 text-xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="w-12 h-12 bg-rose-50 rounded-lg hidden sm:flex items-center justify-center text-rose-600 text-xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     </div>
-                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div class="col-span-2 lg:col-span-1 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng Đơn Bán</p>
                             <h3 id="dash-total-orders" class="text-2xl font-bold text-slate-900 mt-1">0</h3>
                             <p class="text-xs text-slate-500 mt-2">Lượt xuất hàng</p>
                         </div>
-                        <div class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 text-xl"><i class="fa-solid fa-receipt"></i></div>
+                        <div class="w-12 h-12 bg-purple-50 rounded-lg hidden sm:flex items-center justify-center text-purple-600 text-xl"><i class="fa-solid fa-receipt"></i></div>
                     </div>
                 </div>
 
                 <!-- 2. THẺ TỔNG GIÁ TRỊ TỒN KHO & BẢNG PHÂN TRANG DANH MỤC -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Thẻ tổng giá trị tồn kho -->
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                         <div class="flex items-center justify-between">
                             <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tổng Giá Trị Tồn Kho</p>
@@ -170,10 +202,9 @@
                         </div>
                     </div>
 
-                    <!-- Bảng chi tiết giá trị tồn kho theo từng Danh mục -->
                     <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                         <div>
-                            <div class="flex items-center justify-between mb-3 border-b pb-3">
+                            <div class="flex flex-wrap items-center justify-between gap-1 mb-3 border-b pb-3">
                                 <h2 class="font-bold text-slate-800 text-sm flex items-center gap-2">
                                     <i class="fa-solid fa-chart-pie text-indigo-600"></i> Giá Trị Tồn Kho Theo Danh Mục
                                 </h2>
@@ -193,7 +224,6 @@
                                 </table>
                             </div>
                         </div>
-                        <!-- THAM CHIẾU ĐIỀU HƯỚNG PHÂN TRANG -->
                         <div class="pt-3 mt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-slate-500">
                             <div id="dash-cat-pagination-info" class="font-medium">Hiển thị 0 trên tổng số 0 danh mục</div>
                             <div id="dash-cat-pagination-controls" class="flex items-center space-x-1"></div>
@@ -227,14 +257,13 @@
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- BIỂU ĐỒ TỒN KHO -->
                     <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
                         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b pb-3">
                             <div>
                                 <h2 class="font-bold text-slate-800">Biểu Đồ Tồn Kho Theo Tên Sản Phẩm & Danh Mục</h2>
                                 <span id="chart-subtitle" class="text-xs text-slate-500">Tùy chọn hiển thị theo danh mục hoặc sản phẩm cụ thể</span>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex flex-wrap items-center gap-2">
                                 <div class="relative inline-block text-left" id="chart-cat-dropdown-container">
                                     <button type="button" onclick="toggleChartCatMenu()" id="chart-cat-btn" class="bg-slate-50 border border-slate-200 text-xs rounded-lg px-3 py-2 flex items-center gap-2 font-medium text-slate-700">
                                         <i class="fa-solid fa-filter text-blue-600"></i>
@@ -255,7 +284,7 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
                             <span class="text-xs font-semibold text-slate-600 uppercase whitespace-nowrap"><i class="fa-solid fa-box-open text-blue-500 mr-1"></i> Chọn Sản Phẩm Cụ Thể:</span>
                             <div class="relative flex-1">
                                 <button type="button" onclick="toggleChartProdMenu()" id="chart-prod-btn" class="w-full bg-white border border-slate-200 text-xs rounded-lg px-3 py-2 text-left flex items-center justify-between text-slate-700">
@@ -291,13 +320,11 @@
             <section id="tab-products" class="tab-content hidden space-y-6">
                 <div class="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto flex-1">
-                        <!-- Search Box -->
                         <div class="relative w-full sm:w-64">
                             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                             <input type="text" id="product-search" oninput="onSearchOrFilterChange()" placeholder="Tìm theo tên hoặc mã SP..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
 
-                        <!-- BỘ LỌC TỒN KHO -->
                         <div class="flex items-center gap-1.5 bg-slate-50 p-1.5 border border-slate-200 rounded-lg w-full sm:w-auto">
                             <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap pl-1"><i class="fa-solid fa-boxes-stacked text-blue-500"></i> Tồn kho:</span>
                             <select id="stock-filter-op" onchange="onSearchOrFilterChange()" class="bg-white border border-slate-200 text-xs rounded px-2 py-1 font-medium text-slate-700 outline-none">
@@ -315,7 +342,6 @@
                             <i class="fa-solid fa-trash-can"></i> Xóa đã chọn (<span id="selected-count">0</span>)
                         </button>
                         
-                        <!-- Lọc Danh Mục Multi-select -->
                         <div class="relative inline-block text-left" id="category-filter-dropdown-container">
                             <button type="button" onclick="toggleCategoryFilterMenu()" id="category-filter-btn" class="bg-slate-50 border border-slate-200 text-xs rounded-lg px-3 py-2 flex items-center justify-between gap-2 text-slate-700 min-w-[150px]">
                                 <span id="category-filter-label" class="truncate font-medium">Tất cả danh mục</span>
@@ -330,15 +356,15 @@
                             </div>
                         </div>
 
-                        <button onclick="exportStockToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-medium flex items-center gap-1.5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-file-arrow-down"></i> Xuất Excel</button>
-                        <button onclick="openExcelModal()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3.5 py-2 rounded-lg font-medium flex items-center gap-1.5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-file-excel"></i> Nhập từ Excel</button>
+                        <button onclick="exportStockToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-medium flex items-center gap-1.5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-file-arrow-down"></i> Xuất Excel Tồn Kho</button>
+                        <button onclick="openExcelModal()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3.5 py-2 rounded-lg font-medium flex items-center gap-1.5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-file-excel"></i> Nhập SP Từ Excel</button>
                         <button onclick="openProductModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3.5 py-2 rounded-lg font-medium flex items-center gap-1.5 whitespace-nowrap shadow-sm"><i class="fa-solid fa-plus"></i> Thêm SP</button>
                     </div>
                 </div>
 
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm text-slate-600">
+                        <table class="rt w-full text-left text-sm text-slate-600">
                             <thead class="bg-slate-50 text-slate-700 uppercase text-xs border-b border-slate-200 font-semibold">
                                 <tr>
                                     <th class="px-4 py-4 text-center w-10"><input type="checkbox" id="select-all-products" onchange="toggleSelectAllProducts(this)" class="w-4 h-4 text-blue-600 rounded cursor-pointer"></th>
@@ -417,7 +443,7 @@
                         </div>
                         <div class="border border-slate-200 rounded-xl overflow-hidden">
                             <div class="overflow-x-auto max-h-72">
-                                <table class="w-full text-left text-sm text-slate-600">
+                                <table class="rt w-full text-left text-sm text-slate-600">
                                     <thead class="bg-slate-100 text-slate-700 font-semibold text-xs border-b sticky top-0">
                                         <tr>
                                             <th class="p-3">Sản phẩm</th>
@@ -461,6 +487,23 @@
 
             <!-- TAB 5: EXPORT / SALE (POS) -->
             <section id="tab-export" class="tab-content hidden space-y-6">
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-cart-shopping text-blue-600 text-xl"></i>
+                        <h2 class="font-bold text-slate-800 text-base">Tạo Đơn Bán Hàng</h2>
+                    </div>
+                    <!-- NÚT XUẤT FILE MẪU & UPLOAD EXCEL TẠO ĐƠN -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="exportOrderTemplateExcel()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs px-3.5 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-all shadow-sm">
+                            <i class="fa-solid fa-file-excel"></i> Tải File Mẫu Bán Hàng
+                        </button>
+                        <input type="file" id="order-excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleOrderExcelSelect(event)" class="hidden">
+                        <button onclick="document.getElementById('order-excel-file-input').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-semibold flex items-center gap-1.5 transition-all shadow-sm">
+                            <i class="fa-solid fa-file-arrow-up"></i> Nhập Đơn Từ Excel
+                        </button>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div class="lg:col-span-2 space-y-4">
                         <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center">
@@ -474,16 +517,16 @@
                                 </select>
                             </div>
                         </div>
-                        <div id="pos-product-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-[400px] lg:max-h-[calc(100vh-260px)] overflow-y-auto pr-1"></div>
+                        <div id="pos-product-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-[50vh] lg:max-h-[calc(100dvh-260px)] overflow-y-auto pr-1"></div>
                     </div>
 
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div id="cart-panel" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between lg:sticky lg:top-0 lg:self-start">
                         <div>
                             <div class="border-b pb-2.5 mb-2.5 flex justify-between items-center">
                                 <h2 class="font-bold text-slate-800 text-sm flex items-center gap-1.5"><i class="fa-solid fa-cart-shopping text-blue-600"></i> Đơn Hàng Mới</h2>
                                 <button onclick="clearCart()" class="text-[11px] text-rose-500 hover:underline">Xóa tất cả</button>
                             </div>
-                            <div id="cart-items" class="space-y-2 overflow-y-auto max-h-[250px] pr-1 divide-y divide-slate-100"></div>
+                            <div id="cart-items" class="space-y-2 overflow-y-auto max-h-[40vh] lg:max-h-[calc(100dvh-440px)] lg:min-h-[120px] pr-1 divide-y divide-slate-100"></div>
                         </div>
                         <div class="border-t pt-3 space-y-2.5 mt-4">
                             <div>
@@ -494,7 +537,7 @@
                                 <div class="flex justify-between text-slate-600"><span>Tổng số lượng:</span><span id="cart-total-qty" class="font-bold">0</span></div>
                                 <div class="flex justify-between text-base font-bold text-slate-900 pt-1.5 border-t"><span>Tổng tiền:</span><span id="cart-total-price" class="text-blue-600">0 ₫</span></div>
                             </div>
-                            <button onclick="processExport()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition-all flex items-center justify-center gap-2 text-xs"><i class="fa-solid fa-print"></i> Thanh Toán & Xuất Kho</button>
+                            <button id="checkout-btn" onclick="processExport()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition-all flex items-center justify-center gap-2 text-xs"><i class="fa-solid fa-print"></i> Thanh Toán & Xuất Kho</button>
                         </div>
                     </div>
                 </div>
@@ -502,13 +545,13 @@
 
             <!-- TAB 6: IMPORT HISTORY -->
             <section id="tab-import-history" class="tab-content hidden space-y-6">
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-2">
                     <h2 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-file-arrow-down text-emerald-600"></i> Danh Sách Lịch Sử Nhập Kho & Điều Chỉnh Tồn</h2>
                     <span class="text-xs text-slate-500">Tự động lưu trữ các phiếu nhập hàng</span>
                 </div>
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm text-slate-600">
+                        <table class="rt w-full text-left text-sm text-slate-600">
                             <thead class="bg-slate-50 text-slate-700 uppercase text-xs border-b font-semibold">
                                 <tr>
                                     <th class="px-6 py-4">Mã Phiếu Nhập</th>
@@ -527,13 +570,13 @@
 
             <!-- TAB 7: EXPORT HISTORY -->
             <section id="tab-export-history" class="tab-content hidden space-y-6">
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-2">
                     <h2 class="font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-cart-shopping text-blue-600"></i> Danh Sách Lịch Sử Xuất Kho (Bán Hàng)</h2>
                     <span class="text-xs text-slate-500">Tự động lưu trữ các hóa đơn bán hàng</span>
                 </div>
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm text-slate-600">
+                        <table class="rt w-full text-left text-sm text-slate-600">
                             <thead class="bg-slate-50 text-slate-700 uppercase text-xs border-b font-semibold">
                                 <tr>
                                     <th class="px-6 py-4">Mã Hóa Đơn</th>
@@ -551,6 +594,24 @@
             </section>
 
         </main>
+    </div>
+
+    <!-- THANH ĐIỀU HƯỚNG DƯỚI (điện thoại) -->
+    <nav id="bottom-nav" class="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 grid grid-cols-5 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <button type="button" data-tab="dashboard" onclick="switchTab('dashboard')" class="flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-blue-600"><i class="fa-solid fa-chart-pie text-lg"></i><span>Tổng quan</span></button>
+        <button type="button" data-tab="products" onclick="switchTab('products')" class="flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-slate-500"><i class="fa-solid fa-box text-lg"></i><span>Sản phẩm</span></button>
+        <button type="button" data-tab="export" onclick="switchTab('export')" class="flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-slate-500"><i class="fa-solid fa-cart-shopping text-lg"></i><span>Bán hàng</span></button>
+        <button type="button" data-tab="import" onclick="switchTab('import')" class="flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-slate-500"><i class="fa-solid fa-file-arrow-down text-lg"></i><span>Nhập kho</span></button>
+        <button type="button" id="bn-more" onclick="openSidebar()" class="flex flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-semibold text-slate-500"><i class="fa-solid fa-bars text-lg"></i><span>Khác</span></button>
+    </nav>
+
+    <!-- THANH GIỎ HÀNG NỔI (điện thoại) -->
+    <div id="mobile-cart-bar" class="hidden fixed left-3 right-3 z-30 lg:!hidden">
+        <button type="button" onclick="scrollToCart()" class="w-full bg-blue-600 text-white rounded-xl shadow-lg px-4 py-3 flex items-center justify-between gap-3 text-sm font-semibold">
+            <span class="whitespace-nowrap"><i class="fa-solid fa-cart-shopping mr-2"></i><span id="mcb-qty">0</span> SP</span>
+            <span id="mcb-total" class="truncate">0 ₫</span>
+            <span class="bg-white/20 rounded-lg px-3 py-1 text-xs whitespace-nowrap">Thanh toán <i class="fa-solid fa-chevron-down ml-1"></i></span>
+        </button>
     </div>
 
     <!-- MODAL: CONFIRM DELETE -->
@@ -572,12 +633,12 @@
 
     <!-- MODAL: ADD / EDIT PRODUCT -->
     <div id="product-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[92dvh] overflow-y-auto">
             <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <h3 id="modal-title" class="font-bold text-slate-800">Thêm Sản Phẩm Mới</h3>
                 <button onclick="closeProductModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <form id="product-form" onsubmit="saveProduct(event)" class="p-6 space-y-4">
+            <form id="product-form" onsubmit="saveProduct(event)" class="p-4 sm:p-6 space-y-4">
                 <input type="hidden" id="prod-id">
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Mã SP *</label><input type="text" id="prod-code" required class="w-full border rounded-lg p-2 text-sm outline-none"></div>
                 <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tên SP *</label><input type="text" id="prod-name" required class="w-full border rounded-lg p-2 text-sm outline-none"></div>
@@ -588,7 +649,7 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tồn Ban Đầu</label><input type="number" id="prod-stock" min="0" value="0" class="w-full border rounded-lg p-2 text-sm outline-none"></div>
-                    <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ngưỡng Báo Hết</label><input type="number" id="prod-min-stock" min="1" value="5" class="w-full border rounded-lg p-2 text-sm outline-none"></div>
+                    <div><label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ngưỡng Báo Hết</label><input type="number" id="prod-min-stock" min="0" value="5" class="w-full border rounded-lg p-2 text-sm outline-none"></div>
                 </div>
                 <div class="pt-4 border-t flex justify-end gap-3">
                     <button type="button" onclick="closeProductModal()" class="px-4 py-2 border rounded-lg text-sm text-slate-600">Hủy</button>
@@ -618,7 +679,7 @@
 
     <!-- MODAL: INVOICE (CÓ PHÂN TRANG 10 SẢN PHẨM) -->
     <div id="invoice-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden p-6 space-y-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[92dvh] overflow-y-auto p-4 sm:p-6 space-y-4">
             <div id="invoice-print-area" class="space-y-4 text-slate-800">
                 <div class="text-center border-b pb-4"><h2 class="font-bold text-xl uppercase">Hóa Đơn Bán Hàng</h2><p class="text-xs text-slate-500 mt-1" id="inv-date"></p><p class="text-xs text-slate-500">Mã: <span id="inv-code" class="font-semibold"></span></p></div>
                 <div class="text-xs space-y-1"><p>Khách hàng: <span id="inv-customer" class="font-medium"></span></p></div>
@@ -626,7 +687,6 @@
                     <thead><tr class="border-b border-t"><th class="py-2">Tên SP</th><th class="py-2 text-center">SL</th><th class="py-2 text-right">Đơn giá</th><th class="py-2 text-right">Thành tiền</th></tr></thead>
                     <tbody id="inv-items-body" class="divide-y divide-slate-100"></tbody>
                 </table>
-                <!-- THANH PHÂN TRANG HÓA ĐƠN -->
                 <div id="inv-pagination-container" class="pt-2 flex justify-between items-center text-xs text-slate-500 border-t mt-2">
                     <span id="inv-pagination-info">Hiển thị 0 - 0</span>
                     <div id="inv-pagination-controls" class="flex items-center space-x-1"></div>
@@ -640,7 +700,7 @@
     </div>
 
     <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all transform translate-y-20 opacity-0 z-50">
+    <div id="toast" class="pointer-events-none fixed bottom-24 left-4 right-4 md:bottom-5 md:left-auto md:right-5 md:max-w-sm bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-all transform translate-y-20 opacity-0 z-50">
         <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
         <span id="toast-msg" class="text-sm font-medium"></span>
     </div>
@@ -663,7 +723,6 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // Trạng thái kết nối thật (không còn luôn xanh)
         window.cloudConnected = false;
         function setCloudStatus(state, msg) {
             const dot = document.getElementById('cloud-status-dot');
@@ -674,13 +733,13 @@
         }
         function onSyncError(err) {
             console.error(err);
-            setCloudStatus('error', 'Lỗi Firebase: ' + (err && err.message ? err.message : err) + ' (kiểm tra Database Rules)');
-            if (typeof window.showToast === 'function') window.showToast('Lỗi đồng bộ Firebase: ' + (err && err.code ? err.code : 'không rõ') + '. Dữ liệu có thể KHÔNG được lưu!', 'error');
+            setCloudStatus('error', 'Lỗi Firebase: ' + (err && err.message ? err.message : err));
+            if (typeof window.showToast === 'function') window.showToast('Lỗi đồng bộ Firebase!', 'error');
         }
         onValue(ref(database, '.info/connected'), (snap) => {
             window.cloudConnected = snap.val() === true;
             if (window.cloudConnected) setCloudStatus('ok', 'Đã kết nối Firebase');
-            else setCloudStatus('offline', 'Mất kết nối Firebase - thay đổi chỉ lưu tạm trên máy này, sẽ tự đồng bộ khi có mạng');
+            else setCloudStatus('offline', 'Mất kết nối Firebase');
         }, onSyncError);
 
         function setupRealtimeSync() {
@@ -719,10 +778,9 @@
             } catch (e) { console.error('localStorage:', e); }
 
             if (!window.cloudConnected && typeof window.showToast === 'function') {
-                window.showToast('Đang offline: thay đổi mới chỉ lưu tạm trên máy này, sẽ đồng bộ khi có mạng.', 'error');
+                window.showToast('Đang offline: thay đổi chỉ lưu tạm trên máy này.', 'error');
             }
             try {
-                // Một lệnh update duy nhất (nguyên tử): hoặc lưu cả 3 phần, hoặc không phần nào.
                 const clean = (v) => JSON.parse(JSON.stringify(v || []));
                 await update(ref(database, 'kho_hang'), {
                     products: clean(window.products),
@@ -835,6 +893,8 @@
             if (tabId === 'import-history') renderImportHistory();
             if (tabId === 'export-history') renderExportHistory();
             if (tabId === 'dashboard') updateDashboard();
+            closeSidebar(); updateBottomNav(tabId); updateMobileCartBar();
+            const mainEl = document.getElementById('main-scroll'); if (mainEl) mainEl.scrollTop = 0;
         }
 
         function showToast(message, type = 'success') {
@@ -962,7 +1022,6 @@
                 }
             }
 
-            // MẶC ĐỊNH LỌC DOANH THU THEO "HÔM NAY"
             const cardFilter = document.getElementById('revenue-card-filter')?.value || 'today';
             const now = new Date();
             
@@ -1397,7 +1456,6 @@
             });
         }
 
-        // TẠO ĐƠN MỚI (POS): CLICK VÀO THẺ ĐỂ THÊM VÀO GIỎ + HIỂN THỊ TỒN KHO
         function renderPosProducts() {
             const search = document.getElementById('pos-search').value.toLowerCase();
             const selectedCat = document.getElementById('pos-category-filter').value;
@@ -1475,25 +1533,25 @@
             renderCart();
         }
 
-        // GIỎ HÀNG: NÚT VÀ Ô NHẬP LỚM GẤP ĐÔI + BÔI ĐEN KHI CLICK
         function renderCart() {
             const container = document.getElementById('cart-items');
             if (!container) return;
             if (cart.length === 0) { 
                 container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Giỏ hàng trống</p>`; 
-                document.getElementById('cart-total-price').innerText = '0 ₫'; 
+                document.getElementById('cart-total-price').innerText = '0 ₫'; const qEl = document.getElementById('cart-total-qty'); if (qEl) qEl.innerText = '0'; 
                 return; 
             }
             let total = 0, qty = 0;
             container.innerHTML = cart.map(item => {
                 total += item.qty * item.price; 
                 qty += item.qty;
-                return `<div class="py-2.5 flex justify-between text-xs items-center">
-                    <div class="truncate pr-2"><p class="font-semibold truncate text-sm">${item.name}</p><p class="text-xs text-slate-500">${formatVND(item.price)}</p></div>
-                    <div class="flex items-center gap-2 shrink-0">
+                return `<div class="py-2.5 flex flex-wrap justify-between text-xs items-center gap-y-1.5">
+                    <div class="truncate pr-2 min-w-[8rem] flex-1"><p class="font-semibold truncate text-sm">${esc(item.name)}</p><p class="text-xs text-slate-500">${formatVND(item.price)}</p></div>
+                    <div class="flex items-center gap-2 shrink-0 ml-auto">
                         <button onclick="updateCartQty('${item.id}', -1)" class="w-9 h-9 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-base flex items-center justify-center transition-all">-</button>
-                        <input type="number" min="1" value="${item.qty}" onfocus="this.select()" onchange="updateCartQtyDirect('${item.id}', this.value)" class="w-16 text-center font-bold text-sm border rounded-lg p-1.5 outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number" min="1" value="${item.qty}" onfocus="this.select()" onchange="updateCartQtyDirect('${item.id}', this.value)" class="w-14 sm:w-16 text-center font-bold text-sm border rounded-lg p-1.5 outline-none focus:ring-2 focus:ring-blue-500">
                         <button onclick="updateCartQty('${item.id}', 1)" class="w-9 h-9 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg font-bold text-base flex items-center justify-center transition-all">+</button>
+                        <button onclick="removeFromCart('${item.id}')" title="Bỏ khỏi giỏ hàng" aria-label="Bỏ ${esc(item.name)} khỏi giỏ hàng" class="w-9 h-9 ml-1 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg text-sm flex items-center justify-center transition-all"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 </div>`;
             }).join('');
@@ -1501,14 +1559,16 @@
             document.getElementById('cart-total-price').innerText = formatVND(total);
         }
 
+        function removeFromCart(id) {
+            cart = cart.filter(i => String(i.id) !== String(id));
+            renderCart();
+        }
         function clearCart() { cart = []; renderCart(); }
 
-        // ===== TIỆN ÍCH CHUNG =====
         function esc(v) {
             return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
-        // MỤC 4: mã giao dịch tăng dần theo ngày, đảm bảo không trùng: HD260115-001, NK260115-002, DC...
         function generateTransactionId(prefix) {
             const d = new Date();
             const ymd = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
@@ -1520,7 +1580,6 @@
             return id;
         }
 
-        // MỤC 7: ghi lại mọi lần chỉnh tồn kho thủ công (sửa SP, thêm SP có tồn đầu, nhập Excel)
         function logStockAdjustments(entries, reason) {
             const changed = entries.filter(e => (Number(e.newStock) || 0) !== (Number(e.oldStock) || 0));
             if (changed.length === 0) return;
@@ -1539,8 +1598,6 @@
             });
         }
 
-        // MỤC 8: lãi gộp của 1 đơn bán = Σ (giá bán - giá vốn tại thời điểm bán) × SL
-        // Đơn cũ (trước v3.0) chưa lưu giá vốn -> ước tính theo giá nhập hiện tại của sản phẩm.
         function calcOrderProfit(order) {
             let profit = 0, estimated = false;
             (order.items || []).forEach(i => {
@@ -1558,7 +1615,6 @@
         function processExport() {
             if (cart.length === 0) { showToast('Giỏ hàng trống!', 'error'); return; }
 
-            // MỤC 5: kiểm tra lại với tồn kho MỚI NHẤT (có thể đã đổi do máy khác bán) trước khi trừ kho
             const problems = [];
             cart.forEach(item => {
                 const p = window.products.find(prod => String(prod.id) === String(item.id));
@@ -1581,7 +1637,6 @@
                 const price = Number(item.price) || 0;
                 p.stock = (Number(p.stock) || 0) - qty;
                 total += qty * price;
-                // MỤC 8: lưu giá vốn tại thời điểm bán để tính lãi gộp chính xác sau này
                 return { ...item, qty, price, cost: Number(p.importPrice) || 0 };
             });
 
@@ -1718,7 +1773,6 @@
             if (!found) { showToast('Không tìm thấy giao dịch!', 'error'); return; }
             if (found.type === 'ADJUST') { showToast('Phiếu điều chỉnh tồn kho chỉ để tra cứu, không thể xóa.', 'error'); return; }
 
-            // MỤC 6: xóa phiếu nhập chỉ được phép khi tồn kho hiện tại đủ để trừ ngược, không làm tròn về 0 nữa
             if (found.type === 'IMPORT') {
                 const short = [];
                 found.items.forEach(ci => {
@@ -1742,7 +1796,6 @@
                         prod.stock = (Number(prod.stock) || 0) + ci.qty;
                     } else {
                         prod.stock = (Number(prod.stock) || 0) - ci.qty;
-                        // MỤC 6: hoàn lại giá nhập cũ nếu giá hiện tại vẫn là giá của phiếu này
                         if (ci.prevImportPrice !== undefined && Number(prod.importPrice) === Number(ci.importPrice)) prod.importPrice = ci.prevImportPrice;
                     }
                 });
@@ -1755,18 +1808,68 @@
             });
         }
 
+        function openSidebar() {
+            document.getElementById('sidebar')?.classList.remove('-translate-x-full');
+            document.getElementById('sidebar-backdrop')?.classList.remove('hidden');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar')?.classList.add('-translate-x-full');
+            document.getElementById('sidebar-backdrop')?.classList.add('hidden');
+        }
+        function updateBottomNav(tabId) {
+            const mainTabs = ['dashboard', 'products', 'export', 'import'];
+            document.querySelectorAll('#bottom-nav [data-tab]').forEach(b => {
+                const on = b.dataset.tab === tabId;
+                b.classList.toggle('text-blue-600', on);
+                b.classList.toggle('text-slate-500', !on);
+            });
+            const more = document.getElementById('bn-more');
+            if (more) { const on = !mainTabs.includes(tabId); more.classList.toggle('text-blue-600', on); more.classList.toggle('text-slate-500', !on); }
+        }
+        function updateMobileCartBar() {
+            const bar = document.getElementById('mobile-cart-bar');
+            const tab = document.getElementById('tab-export');
+            if (!bar || !tab) return;
+            const qty = parseInt(document.getElementById('cart-total-qty')?.innerText) || 0;
+            bar.classList.toggle('hidden', tab.classList.contains('hidden') || qty <= 0 || window.__checkoutVisible === true);
+            document.getElementById('mcb-qty').innerText = qty;
+            document.getElementById('mcb-total').innerText = document.getElementById('cart-total-price')?.innerText || '0 ₫';
+        }
+        function scrollToCart() { document.getElementById('cart-panel')?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }
+
+        function labelTableRows(table) {
+            const heads = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+            table.querySelectorAll('tbody tr').forEach(tr => {
+                [...tr.children].forEach((td, i) => { if (td.colSpan > 1) return; if (td.dataset.label === undefined) td.dataset.label = heads[i] || ''; });
+            });
+        }
+        function initResponsiveUI() {
+            ['products-table-body', 'import-items-tbody', 'import-history-table-body', 'export-history-table-body'].forEach(id => {
+                const tb = document.getElementById(id); if (!tb) return;
+                const table = tb.closest('table');
+                new MutationObserver(() => labelTableRows(table)).observe(tb, { childList: true });
+                labelTableRows(table);
+            });
+            ['cart-total-qty', 'cart-total-price'].forEach(id => {
+                const el = document.getElementById(id); if (!el) return;
+                new MutationObserver(updateMobileCartBar).observe(el, { childList: true, characterData: true, subtree: true });
+            });
+            const payBtn = document.getElementById('checkout-btn');
+            if (payBtn && 'IntersectionObserver' in window) {
+                new IntersectionObserver(es => { window.__checkoutVisible = es[0].isIntersecting; updateMobileCartBar(); },
+                    { root: document.getElementById('main-scroll'), rootMargin: '0px 0px -70px 0px', threshold: 1 }).observe(payBtn);
+            }
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSidebar(); });
+            window.addEventListener('resize', () => { if (window.innerWidth >= 768) closeSidebar(); });
+        }
+
         window.onload = function() { 
             updateDashboard(); 
             updatePosCategoryDropdown(); 
             renderCategoryCheckboxes();
 
-            document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
-                const sidebar = document.getElementById('sidebar');
-                sidebar.classList.toggle('hidden');
-                sidebar.classList.toggle('absolute');
-                sidebar.classList.toggle('inset-y-0');
-                sidebar.classList.toggle('left-0');
-            });
+            document.getElementById('mobile-menu-btn')?.addEventListener('click', openSidebar);
+            initResponsiveUI();
         };
 
         let parsedExcelProducts = [];
@@ -1867,7 +1970,9 @@
         }
         function onSearchOrFilterChange() { currentPage = 1; renderProducts(); }
 
-        // XUẤT EXCEL CÓ TRANG TRÍ & PHÂN NHÓM THEO DANH MỤC
+        // =========================================================================
+        // 1. XUẤT EXCEL TỒN KHO: TÔ MÀU PHÂN LOẠI DANH MỤC & TÔ MÀU XEN KẼ DÒNG
+        // =========================================================================
         function exportStockToExcel() {
             const search = document.getElementById('product-search').value.toLowerCase();
             const stockOp = document.getElementById('stock-filter-op')?.value || 'all';
@@ -1908,35 +2013,49 @@
 
             const excelRows = [];
             excelRows.push(["BÁO CÁO TỒN KHO VÀ SẢN PHẨM THEO DANH MỤC"]);
-            excelRows.push(["Ngày xuất báo cáo:", new Date().toLocaleDateString('vi-VN')]);
+            excelRows.push(["Thời gian xuất:", new Date().toLocaleString('vi-VN')]);
             excelRows.push([]);
 
             let stt = 1;
             let grandTotalStock = 0;
             let grandTotalValue = 0;
 
+            const catHeaderRowIndices = [];
+            const colHeaderRowIndices = [];
+            const productRowInfo = []; // { rowIndex, isEven }
+            const catSummaryRowIndices = [];
+            let totalSummaryRowIndex = -1;
+
             Object.keys(groupedByCategory).forEach(catName => {
                 const productsInCat = groupedByCategory[catName];
 
+                // 1. Dòng Danh Mục
+                catHeaderRowIndices.push(excelRows.length);
                 excelRows.push([`DANH MỤC: ${catName.toUpperCase()}`, "", "", "", "", "", "", ""]);
+
+                // 2. Dòng Cột Tiêu Đề
+                colHeaderRowIndices.push(excelRows.length);
                 excelRows.push(["STT", "Mã SP", "Tên Sản Phẩm", "Danh Mục", "Giá Nhập (₫)", "Giá Bán (₫)", "Tồn Kho", "Tổng Giá Trị (₫)"]);
 
                 let catTotalStock = 0;
                 let catTotalValue = 0;
 
-                productsInCat.forEach(p => {
+                // 3. Các dòng Sản Phẩm (Đánh dấu dòng lẻ/chẵn để tô màu xen kẽ)
+                productsInCat.forEach((p, idx) => {
                     const totalVal = (Number(p.stock) || 0) * (Number(p.sellPrice) || 0);
                     catTotalStock += Number(p.stock) || 0;
                     catTotalValue += totalVal;
+
+                    productRowInfo.push({ rowIndex: excelRows.length, isEven: idx % 2 === 1 });
 
                     excelRows.push([
                         stt++,
                         p.code,
                         p.name,
                         p.category,
-                        p.importPrice,
-                        p.sellPrice,
-                        p.stock,
+                        Number(p.importPrice) || 0,
+                        Number(p.sellPrice) || 0,
+                        Number(p.stock) || 0,
                         totalVal
                     ]);
                 });
@@ -1944,55 +2063,122 @@
                 grandTotalStock += catTotalStock;
                 grandTotalValue += catTotalValue;
 
+                // 4. Dòng Tổng danh mục
+                catSummaryRowIndices.push(excelRows.length);
                 excelRows.push(["", "", `Tổng cộng danh mục [${catName}]`, "", "", "", catTotalStock, catTotalValue]);
-                excelRows.push([]);
+                excelRows.push([]); // Dòng trống cách
             });
 
+            // Dòng Tổng toàn bộ báo cáo
+            totalSummaryRowIndex = excelRows.length;
             excelRows.push(["", "", "TỔNG CỘNG TOÀN BỘ BÁO CÁO", "", "", "", grandTotalStock, grandTotalValue]);
 
             const worksheet = XLSX.utils.aoa_to_sheet(excelRows);
 
-            if(!worksheet['!cols']) worksheet['!cols'] = [];
+            // Cấu hình độ rộng các cột
             worksheet['!cols'] = [
-                { wch: 6 }, { wch: 15 }, { wch: 32 }, { wch: 20 },
-                { wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 20 }
+                { wch: 6 },   // STT
+                { wch: 15 },  // Mã SP
+                { wch: 35 },  // Tên SP
+                { wch: 18 },  // Danh Mục
+                { wch: 18 },  // Giá Nhập
+                { wch: 18 },  // Giá Bán
+                { wch: 12 },  // Tồn Kho
+                { wch: 22 }   // Tổng Giá Trị
             ];
 
+            // Áp dụng định dạng nâng cao bằng SheetJS
             const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for (let R = range.s.r; R <= range.e.r; ++R) {
-                const cellA = worksheet[XLSX.utils.encode_cell({r: R, c: 0})];
-                const cellText = cellA ? String(cellA.v) : "";
 
-                if (cellText.startsWith("DANH MỤC:")) {
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                        const cellRef = XLSX.utils.encode_cell({r: R, c: C});
-                        if (!worksheet[cellRef]) worksheet[cellRef] = { v: C === 0 ? cellText : "" };
+            // Border style chung
+            const thinBorder = {
+                top: { style: "thin", color: { rgb: "E2E8F0" } },
+                bottom: { style: "thin", color: { rgb: "E2E8F0" } },
+                left: { style: "thin", color: { rgb: "E2E8F0" } },
+                right: { style: "thin", color: { rgb: "E2E8F0" } }
+            };
+
+            // 1. Tiêu đề chính báo cáo
+            if (worksheet['A1']) worksheet['A1'].s = { font: { bold: true, sz: 14, color: { rgb: "1E3A8A" } } };
+
+            // 2. Banner Danh mục
+            catHeaderRowIndices.forEach(R => {
+                for (let C = 0; C <= 7; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!worksheet[cellRef]) worksheet[cellRef] = { v: "" };
+                    worksheet[cellRef].s = {
+                        fill: { fgColor: { rgb: "0F172A" } }, // Xanh Navy sẫm
+                        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
+                        alignment: { vertical: "center", horizontal: "left" }
+                    };
+                }
+            });
+
+            // 3. Header cột dữ liệu
+            colHeaderRowIndices.forEach(R => {
+                for (let C = 0; C <= 7; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (worksheet[cellRef]) {
                         worksheet[cellRef].s = {
-                            fill: { fgColor: { rgb: "1E293B" } },
-                            font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
-                            alignment: { vertical: "center", horizontal: "left" }
+                            fill: { fgColor: { rgb: "334155" } }, // Xám Slate đậm
+                            font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10 },
+                            alignment: { vertical: "center", horizontal: C === 0 || C === 6 ? "center" : (C >= 4 ? "right" : "left") },
+                            border: thinBorder
                         };
                     }
-                } else if (cellText === "STT") {
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                        const cellRef = XLSX.utils.encode_cell({r: R, c: C});
-                        if (worksheet[cellRef]) {
-                            worksheet[cellRef].s = {
-                                fill: { fgColor: { rgb: "475569" } },
-                                font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10 },
-                                alignment: { vertical: "center", horizontal: "center" }
-                            };
-                        }
-                    }
-                } else if (cellText.includes("Tổng cộng danh mục") || cellText.includes("TỔNG CỘNG TOÀN BỘ BÁO CÁO")) {
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                        const cellRef = XLSX.utils.encode_cell({r: R, c: C});
-                        if (!worksheet[cellRef]) worksheet[cellRef] = { v: "" };
+                }
+            });
+
+            // 4. Dòng Sản phẩm (Tô màu xen kẽ ZEBRA STRIPING)
+            productRowInfo.forEach(item => {
+                const R = item.rowIndex;
+                const bgRGB = item.isEven ? "F8FAFC" : "FFFFFF"; // Màu chẵn: Xám rất nhạt, Lẻ: Trắng
+                for (let C = 0; C <= 7; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (worksheet[cellRef]) {
                         worksheet[cellRef].s = {
-                            fill: { fgColor: { rgb: cellText.includes("TỔNG CỘNG TOÀN BỘ") ? "DBEAFE" : "F1F5F9" } },
-                            font: { bold: true, color: { rgb: cellText.includes("TỔNG CỘNG TOÀN BỘ") ? "1D4ED8" : "0F172A" } }
+                            fill: { fgColor: { rgb: bgRGB } },
+                            font: { sz: 10, color: { rgb: "1E293B" } },
+                            alignment: { vertical: "center", horizontal: C === 0 || C === 6 ? "center" : (C >= 4 ? "right" : "left") },
+                            border: thinBorder
                         };
+                        // Format số cho giá và tồn kho
+                        if (C === 4 || C === 5 || C === 7) worksheet[cellRef].z = '#,##0" ₫"';
+                        if (C === 6) worksheet[cellRef].z = '#,##0';
                     }
+                }
+            });
+
+            // 5. Dòng Tổng cộng danh mục
+            catSummaryRowIndices.forEach(R => {
+                for (let C = 0; C <= 7; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!worksheet[cellRef]) worksheet[cellRef] = { v: "" };
+                    worksheet[cellRef].s = {
+                        fill: { fgColor: { rgb: "F1F5F9" } },
+                        font: { bold: true, color: { rgb: "0F172A" }, sz: 10 },
+                        alignment: { vertical: "center", horizontal: C >= 6 ? "right" : "left" },
+                        border: { top: { style: "thin", color: { rgb: "94A3B8" } }, bottom: { style: "thin", color: { rgb: "94A3B8" } } }
+                    };
+                    if (C === 6) worksheet[cellRef].z = '#,##0';
+                    if (C === 7) worksheet[cellRef].z = '#,##0" ₫"';
+                }
+            });
+
+            // 6. Dòng Tổng cộng toàn bộ
+            if (totalSummaryRowIndex !== -1) {
+                const R = totalSummaryRowIndex;
+                for (let C = 0; C <= 7; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!worksheet[cellRef]) worksheet[cellRef] = { v: "" };
+                    worksheet[cellRef].s = {
+                        fill: { fgColor: { rgb: "DBEAFE" } }, // Xanh nhạt nổi bật
+                        font: { bold: true, color: { rgb: "1D4ED8" }, sz: 11 },
+                        alignment: { vertical: "center", horizontal: C >= 6 ? "right" : "left" },
+                        border: { top: { style: "thin", color: { rgb: "2563EB" } }, bottom: { style: "double", color: { rgb: "2563EB" } } }
+                    };
+                    if (C === 6) worksheet[cellRef].z = '#,##0';
+                    if (C === 7) worksheet[cellRef].z = '#,##0" ₫"';
                 }
             }
 
@@ -2000,6 +2186,174 @@
             XLSX.utils.book_append_sheet(workbook, worksheet, "Phan_Loai_Ton_Kho");
             XLSX.writeFile(workbook, `Bao_Cao_Phan_Loai_Theo_Danh_Muc_${new Date().toISOString().split('T')[0]}.xlsx`);
             showToast('Đã xuất Excel phân loại theo danh mục thành công!');
+        }
+
+        // =========================================================================
+        // 2. XUẤT FILE EXCEL MẪU DÀNH CHO TẠO ĐƠN MỚI
+        // =========================================================================
+        function exportOrderTemplateExcel() {
+            if (window.products.length === 0) {
+                showToast('Chưa có sản phẩm nào trong hệ thống!', 'error');
+                return;
+            }
+
+            const excelRows = [];
+            excelRows.push(["FILE MẪU TẠO ĐƠN BÁN HÀNG TỰ ĐỘNG"]);
+            excelRows.push(["* Hướng dẫn: Điền số lượng sản phẩm muốn mua vào cột 'Số Lượng Mua *', sau đó tải file lên hệ thống."]);
+            excelRows.push([]);
+            excelRows.push(["STT", "Mã SP", "Tên Sản Phẩm", "Danh Mục", "Giá Bán (₫)", "Tồn Kho Hiện Tại", "Số Lượng Mua *"]);
+
+            window.products.forEach((p, idx) => {
+                excelRows.push([
+                    idx + 1,
+                    p.code,
+                    p.name,
+                    p.category,
+                    Number(p.sellPrice) || 0,
+                    Number(p.stock) || 0,
+                    "" // Ô số lượng mua để trống cho người dùng điền
+                ]);
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(excelRows);
+
+            worksheet['!cols'] = [
+                { wch: 6 },   // STT
+                { wch: 15 },  // Mã SP
+                { wch: 35 },  // Tên SP
+                { wch: 18 },  // Danh Mục
+                { wch: 18 },  // Giá Bán
+                { wch: 16 },  // Tồn Kho
+                { wch: 18 }   // Số Lượng Mua
+            ];
+
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            const thinBorder = {
+                top: { style: "thin", color: { rgb: "CBD5E1" } },
+                bottom: { style: "thin", color: { rgb: "CBD5E1" } },
+                left: { style: "thin", color: { rgb: "CBD5E1" } },
+                right: { style: "thin", color: { rgb: "CBD5E1" } }
+            };
+
+            // Format Header
+            for (let C = 0; C <= 6; ++C) {
+                const cellRef = XLSX.utils.encode_cell({ r: 3, c: C });
+                if (worksheet[cellRef]) {
+                    worksheet[cellRef].s = {
+                        fill: { fgColor: { rgb: C === 6 ? "2563EB" : "1E293B" } }, // Cột số lượng mua màu xanh dương đậm nổi bật
+                        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 10 },
+                        alignment: { vertical: "center", horizontal: C === 0 || C === 5 || C === 6 ? "center" : (C === 4 ? "right" : "left") },
+                        border: thinBorder
+                    };
+                }
+            }
+
+            // Format Data rows
+            for (let R = 4; R <= range.e.r; ++R) {
+                const isEven = (R % 2 === 0);
+                for (let C = 0; C <= 6; ++C) {
+                    const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+                    if (!worksheet[cellRef]) worksheet[cellRef] = { v: "" };
+                    worksheet[cellRef].s = {
+                        fill: { fgColor: { rgb: C === 6 ? "FEF08A" : (isEven ? "F8FAFC" : "FFFFFF") } }, // Cột 'Số Lượng Mua' màu vàng nhạt thu hút chú ý
+                        font: { bold: C === 6, color: { rgb: "0F172A" }, sz: 10 },
+                        alignment: { vertical: "center", horizontal: C === 0 || C === 5 || C === 6 ? "center" : (C === 4 ? "right" : "left") },
+                        border: thinBorder
+                    };
+                    if (C === 4) worksheet[cellRef].z = '#,##0" ₫"';
+                    if (C === 5 || C === 6) worksheet[cellRef].z = '#,##0';
+                }
+            }
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Mau_Tao_Don_Hang");
+            XLSX.writeFile(workbook, `Mau_Tao_Don_Hang_POS_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showToast('Đã tải xuống file mẫu tạo đơn thành công!');
+        }
+
+        // =========================================================================
+        // 3. ĐỌC UPLOAD FILE EXCEL TẠO ĐƠN BÁN HÀNG TỰ ĐỘNG
+        // =========================================================================
+        function handleOrderExcelSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: 'array' });
+                    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: '' });
+
+                    if (rows.length === 0) {
+                        showToast('File Excel không có dữ liệu!', 'error');
+                        return;
+                    }
+
+                    const parseCleanNumber = (val) => {
+                        if (typeof val === 'number') return val;
+                        if (!val) return 0;
+                        const cleaned = String(val).replace(/[^\d-]/g, '');
+                        const num = parseFloat(cleaned);
+                        return isNaN(num) ? 0 : num;
+                    };
+
+                    let addedCount = 0;
+                    let overflowMessages = [];
+
+                    rows.forEach(r => {
+                        const code = String(r['Mã SP'] || r['Ma SP'] || r['code'] || r['Code'] || '').trim();
+                        const qty = parseCleanNumber(r['Số Lượng Mua *'] || r['So Luong Mua'] || r['qty'] || r['Qty'] || r['Số Lượng'] || r['So luong']);
+
+                        if (code && qty > 0) {
+                            const p = window.products.find(prod => String(prod.code).toLowerCase() === code.toLowerCase());
+                            if (p) {
+                                if (p.stock <= 0) {
+                                    overflowMessages.push(`Sản phẩm "${p.name}" đã hết hàng`);
+                                } else {
+                                    let buyQty = qty;
+                                    if (buyQty > p.stock) {
+                                        buyQty = p.stock;
+                                        overflowMessages.push(`"${p.name}" chỉ còn tồn ${p.stock} (đã tự điều chỉnh)`);
+                                    }
+
+                                    // Thêm vào giỏ hàng
+                                    const existing = cart.find(i => String(i.id) === String(p.id));
+                                    if (existing) {
+                                        const newQty = Math.min(existing.qty + buyQty, p.stock);
+                                        existing.qty = newQty;
+                                    } else {
+                                        cart.push({
+                                            id: p.id,
+                                            name: p.name,
+                                            price: p.sellPrice,
+                                            cost: Number(p.importPrice) || 0,
+                                            qty: buyQty
+                                        });
+                                    }
+                                    addedCount++;
+                                }
+                            }
+                        }
+                    });
+
+                    if (addedCount > 0) {
+                        renderCart();
+                        showToast(`Đã thêm thành công ${addedCount} sản phẩm từ file Excel vào đơn!`);
+                        if (overflowMessages.length > 0) {
+                            setTimeout(() => {
+                                showToast('Lưu ý: ' + overflowMessages.join('; '), 'error');
+                            }, 1500);
+                        }
+                    } else {
+                        showToast('Không tìm thấy sản phẩm nào có số lượng mua > 0 trong file!', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('Lỗi khi đọc file Excel tạo đơn!', 'error');
+                }
+                // Reset input file để có thể upload lại cùng file nếu muốn
+                e.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         function openProductModal(isEdit = false) {
@@ -2024,15 +2378,13 @@
                 importPrice: num('prod-import-price', false, 0),
                 sellPrice: num('prod-sell-price', false, 0),
                 stock: num('prod-stock', true, 0),
-                minStock: num('prod-min-stock', true, 5)   // cho phép đặt ngưỡng = 0 (trước đây 0 bị đổi thành 5)
+                minStock: num('prod-min-stock', true, 5)
             };
 
-            // Kiểm tra dữ liệu hợp lệ
             if (!newProduct.code || !newProduct.name) { showToast('Mã SP và Tên SP không được để trống!', 'error'); return; }
             if (newProduct.importPrice < 0 || newProduct.sellPrice < 0 || newProduct.stock < 0 || newProduct.minStock < 0) {
                 showToast('Giá, tồn kho và ngưỡng báo hết không được âm!', 'error'); return;
             }
-            // Chặn trùng mã SP (không phân biệt hoa/thường, bỏ qua chính sản phẩm đang sửa)
             const dup = window.products.find(p => String(p.id) !== String(id) && String(p.code).trim().toLowerCase() === newProduct.code.toLowerCase());
             if (dup) { showToast(`Mã SP "${newProduct.code}" đã tồn tại (${dup.name})!`, 'error'); return; }
 
@@ -2040,7 +2392,6 @@
                 const idx = window.products.findIndex(p => String(p.id) === String(id));
                 if (idx !== -1) {
                     const oldStock = Number(window.products[idx].stock) || 0;
-                    // Ghi lịch sử khi tồn kho bị chỉnh tay
                     logStockAdjustments([{ id: newProduct.id, code: newProduct.code, name: newProduct.name, oldStock, newStock: newProduct.stock }], 'Sửa thông tin sản phẩm');
                     window.products[idx] = newProduct;
                 }
@@ -2194,7 +2545,7 @@
                 const p = window.products.find(prod => String(prod.id) === String(i.id));
                 const qty = Number(i.qty) || 0;
                 const price = Number(i.importPrice) || 0;
-                const prevImportPrice = Number(p.importPrice) || 0;   // để hoàn lại giá khi xóa phiếu
+                const prevImportPrice = Number(p.importPrice) || 0;
                 p.stock = (Number(p.stock) || 0) + qty;
                 p.importPrice = price;
                 total += qty * price;
